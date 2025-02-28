@@ -1,10 +1,10 @@
-# orpML/get_data.R
+# orpML/data/get_data.R
 # Script to prepare microbial abundance, Zc, and redox data
 # 20241118
 
 # Requirements:
-# JMDplots >= 1.2.20-11
-# chem16S >= 1.1.0-8
+# JMDplots >= 1.2.21  # https://doi.org/10.5281/zenodo.3544910
+# chem16S >= 1.2.0    # https://cran.r-project.org/package=chem16S
 
 # Usage
 if(FALSE) {
@@ -133,7 +133,6 @@ get_data <- function(domain = "Bacteria", rank = "phylum", feature = "abundance"
     print(paste("Abundances for", ntaxa, "taxa"))
     print(paste("Minimum abundance with all taxa:", min(rowSums(all_data[, -(1:5), drop = FALSE]))))
     # Keep 500 most abundant taxa
-AD <<- all_data
     if(ntaxa > 500) all_data <- keep_top_n(all_data, 500)
     ntaxa <- dim(all_data)[2] - 5
     print(paste("Minimum abundance with", ntaxa, "taxa:", min(rowSums(all_data[, -(1:5), drop = FALSE]))))

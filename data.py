@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
 
 # Read data
-df = pd.read_csv("Bacteria.csv.xz")
+df = pd.read_csv("data/Bacteria.csv.xz")
 # Drop rows with missing values for the target variable
 target_variable = "Eh7"
 df = df[df[target_variable].notna()]
