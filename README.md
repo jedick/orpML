@@ -1,11 +1,14 @@
 # orpML
 
-This repo has files for the study:
+This repository has files for the study:
 *Machine learning prediction of redox potential from microbial abundances and genomes*.
 
 The usage is briefly described below.
 
-## Get data
+## Get data (optional)
+
+NOTE: The repo contains the combined data file (`Bacteria.csv.xz`) that is used for downstream processing.
+The following steps only need to be run if you want to recreate this file.
 
 Running R in the `data/` directory:
 
@@ -24,26 +27,24 @@ combine_files()
 ```
 
 This combines the previously created .csv files into one file.
-Only this file is kept in the repository, as `Bacteria.csv.xz`.
 
-## Fit models with scikit-learn
+## Run models with scikit-learn
 
 Running python in the root directory:
 
 ```python
-from main import *
+from load import *
+# Save results of different grid searches
 Step_1_regressor()
 Step_2_reduce_dim()
 Step_3_n_components()
-# Feature selection
 Step_4_features()
-# Hyperparameter tuning
 Step_5_hyper()
-# Predictions on test set
+# Save predictions on test set
 Step_6_test()
 ```
 
-## Plot results
+## Evaluating and plotting results
 
 ```python
 from plot import *
@@ -65,14 +66,21 @@ plot_n_components()
 plot_test()
 ```
 
-## Description of Python modules
+## Implementation in a data engineering workflow
 
-### `data.py`
+For better reusability and maintenance, a modular design is adopted that follows a modified extract-transform-load (ETL) workflow.
+The regression model is defined after data transformation (preprocessing), so the workflow becomes ETML.
+Lastly, we make plots to evaluate the models, making the entire workflow ETMLP (extract-transform-model-load-plot).
+
+### `extract.py`
+This module extracts the data from the `data/` directory and creates the following object for downstream processing:
+
 - `X_train, X_test`: Train and test splits for features (abundance and Zc at all taxonomic ranks)
 - `y_train, y_test`: Train and test splits for target (Eh7)
-- `test_it()`: Function to make predictions on test set and print and return MAE
 
-### `defs.py`
+### `transform.py`
+This module contains the functions and classes used for preprocessing the data:
+
 - `ListTopTaxa()`: Function to list the n most abundant taxa
 - `KeepTopTaxa()`: Transformer class to keep columns with the n most abundant taxa
 - `PrintOnce()`: Function to print a message only once during `GridSearchCV()`
@@ -80,4 +88,21 @@ plot_test()
 - `SelectFeatures()`: Transformer class to select features: abundance and/or Zc each for a given rank
 - `DropNACols()`: Transformer class to drop columns with frequency of NA values above a certain threshold
 
+### `model.py`
+This module implements the regression models.
 
+### `load.py`
+This module is the main Python file that recursively depends on the previous ones.
+The first 5 functions carry out grid searches over selected parameters and load the results into the `results/` directory.
+The last function saves the predictions of the tuned model on the test set to `test_results.csv`.
+
+- `Step_1_regressor()`
+- `Step_2_reduce_dim()`
+- `Step_3_n_components()`
+- `Step_4_features()`: Feature selection
+- `Step_5_hyper()`: Hyperparameter tuning
+- `Step_6_test()`: Make predictions on test set
+
+### `plot.py`
+The functions in this file require the saved results from all the steps in `load.py`.
+These results are saved in the repository, so the plots can be made without having to rerun the previous functions.

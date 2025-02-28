@@ -1,5 +1,6 @@
-from models import *
 import ast
+from sklearn.metrics import mean_absolute_error
+from model import *
 
 def Step_1_regressor():
 
@@ -132,3 +133,16 @@ def Step_6_test():
     y_test_df.reset_index(drop=True, inplace=True)
     df = pd.concat([metadata_test, y_test_df, y_pred_df], axis = 1)
     df.to_csv("results/test_results.csv", index = False)
+
+# Function to make predictions on test set and print and return MAE
+def test_it(model, description):
+    # Make predictions
+    y_train_pred = model.predict(X_train)
+    y_test_pred = model.predict(X_test)
+    # Evaluate predictions using mean absolute error of Eh7
+    MAE_train = mean_absolute_error(y_train, y_train_pred)
+    MAE_test = mean_absolute_error(y_test, y_test_pred)
+    print(f"R2 of {description} model on training set: {MAE_train:.3f}")
+    print(f"R2 of {description} model on test set: {MAE_test:.3f}")
+    return MAE_train, MAE_test
+

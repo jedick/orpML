@@ -6,38 +6,39 @@ from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV
-from defs import *
-from data import *
+from extract import *
+from transform import *
 
 # Using PCA before predictive model:
 # https://stats.stackexchange.com/questions/258938/pca-before-random-forest-regression-provide-better-predictive-scores-for-my-data
 
-# Preprocessing steps
-preprocessing_steps = [
-    # Linear regression error explodes with all 500 taxa
+# Define the preprocessing pipeline
+preprocessor = Pipeline([
+    # nb. Linear regression error explodes with all 500 taxa
     ("keeptoptaxa", KeepTopTaxa(500)),
     ("selectfeatures", SelectFeatures()),
     ("dropnacols", DropNACols()),
+    # Imputer converts DataFrame to NumPy array
     ("imputer", SimpleImputer()),
     ("scaler", StandardScaler()),
-    ('reduce_dim', PCA(150)),
-]
+    ("reduce_dim", PCA(150)),
+])
 
 # Dummy regressor (baseline) model
 dumreg = Pipeline(
-    preprocessing_steps + 
+    preprocessor.steps + 
     [("regressor", DummyRegressor())]
 )
 
 # Linear regression model
 linreg = Pipeline(
-    preprocessing_steps + 
+    preprocessor.steps + 
     [("regressor", LinearRegression())]
 )
 
 # Random forest regressor model
 ranfor = Pipeline(
-    preprocessing_steps + 
+    preprocessor.steps + 
     # With n_jobs > 1 in GridSearchCV, we need to random_state here for reproducibility (not np.random.seed above)
     # Use n_estimators = 100 to be consistent with HistGradientBoostingRegressor(max_iter = 100)
     [("regressor", RandomForestRegressor(n_estimators = 100, random_state = 1))]
@@ -45,7 +46,7 @@ ranfor = Pipeline(
 
 # Histogram-based gradient boosting regression tree
 histgbr = Pipeline(
-    preprocessing_steps + 
+    preprocessor.steps + 
     # Use max_leaf_nodes = None to be consistent with RandomForestRegressor()
     [("regressor", HistGradientBoostingRegressor(max_leaf_nodes = None, random_state = 1))]
 )
