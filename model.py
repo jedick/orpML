@@ -1,28 +1,8 @@
 from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.dummy import DummyRegressor
-from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV
 from extract import *
 from transform import *
-
-# Using PCA before predictive model:
-# https://stats.stackexchange.com/questions/258938/pca-before-random-forest-regression-provide-better-predictive-scores-for-my-data
-
-# Define the preprocessing pipeline
-preprocessor = Pipeline([
-    # nb. Linear regression error explodes with all 500 taxa
-    ("keeptoptaxa", KeepTopTaxa(500)),
-    ("selectfeatures", SelectFeatures()),
-    ("dropnacols", DropNACols()),
-    # Imputer converts DataFrame to NumPy array
-    ("imputer", SimpleImputer()),
-    ("scaler", StandardScaler()),
-    ("reduce_dim", PCA(150)),
-])
 
 # Dummy regressor (baseline) model
 dumreg = Pipeline(
