@@ -5,6 +5,7 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torchmetrics import MeanAbsoluteError
 from extract import *
@@ -26,42 +27,53 @@ dataloader_train = DataLoader(dataset_train, batch_size = 100, shuffle = True)
 dataset_test = TensorDataset(torch.tensor(X_test).float(), torch.tensor(y_test).float())
 dataloader_test = DataLoader(dataset_test, batch_size = 100)
 
-#class Model(nn.Module):
-#  def __init__(self, num_features):
-#    super().__init__()
-#    self.layer1 = nn.Linear(num_features, 20)
-#    self.act1 = nn.ReLU()
-#    self.layer2 = nn.Linear(20, 1)
-#    # Initialize each layer's weights
-#    nn.init.kaiming_uniform_(self.layer1.weight)
-#    nn.init.kaiming_uniform_(self.layer2.weight)
-#
-#  def forward(self, x):
-#    x = self.act1(self.layer1(x))
-#    x = self.layer2(x)
-#    return(x)
+class DeepModel(nn.Module):
+    def __init__(self, num_features):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(num_features, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
+        )
 
-class Model(nn.Module):
-  def __init__(self, num_features):
-    super().__init__()
-    self.layer1 = nn.Linear(num_features, 1)
+        ## Initialize each layer's weights
+        #nn.init.kaiming_uniform_(self.fc1.weight)
+        #nn.init.kaiming_uniform_(self.fc2.weight)
+        #nn.init.kaiming_uniform_(self.fc3.weight)
 
-  def forward(self, x):
-    x = self.layer1(x)
-    return(x)
+    def forward(self, x):
+        return self.layers(x)
 
-# Instantiate the model with the number of features
+class LinearModel(nn.Module):
+    def __init__(self, num_features):
+        super().__init__()
+        self.layer = nn.Linear(num_features, 1)
+
+    def forward(self, x):
+        return self.layer(x)
+
+# Instantiate the desired model
 num_features = X_train.shape[1]
-model = Model(num_features)
+model = DeepModel(num_features)
+
+# Use higher learning rate for linear model
+if model.__class__.__name__ == "DeepModel":
+    lr = 0.01
+if model.__class__.__name__ == "LinearModel":
+    lr = 0.1
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
-optimizer = optim.SGD(model.parameters(), lr = 0.1)
+optimizer = optim.Adam(model.parameters(), lr = lr)
 
 # The training loop
 # Make sure the model is in training mode
 model.train()
-num_epochs = 20000
+num_epochs = 2000
 for epoch in range(num_epochs):
     running_loss = 0.0
     running_size = 0.0

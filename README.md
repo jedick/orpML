@@ -66,10 +66,10 @@ plot_n_components()
 plot_test()
 ```
 
-## Implementation in a data engineering workflow
+## Modular design
 
 For better reusability and maintenance, a modular design is adopted that follows a modified extract-transform-load (ETL) workflow.
-The regression model is defined after data transformation (preprocessing), so the workflow becomes ETML.
+The regression models (both traditional and deep-learning) take the output data transformation (preprocessing), so the workflow becomes ETML.
 Lastly, we make plots to evaluate the models, making the entire workflow ETMLP (extract-transform-model-load-plot).
 
 ### `extract.py`
@@ -89,7 +89,10 @@ This module contains the functions and classes used for preprocessing the data:
 - `DropNACols()`: Transformer class to drop columns with frequency of NA values above a certain threshold
 
 ### `model.py`
-This module implements the regression models.
+This module implements the traditional regression models made with scikit-learn.
+
+### `deep_model.py`
+This module implements the deep learning models made with PyTorch.
 
 ### `load.py`
 This module is the main Python file that recursively depends on the previous ones.
