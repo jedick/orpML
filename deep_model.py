@@ -1,18 +1,20 @@
-# orpML/nn_model.py
+# orpML/deep_model.py
 # Deep learning model for predicting Eh7 from microbial abundances
 # 20250301 jmd
 
 import torch
-from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torchmetrics import MeanAbsoluteError
+import pytorch_lightning as L
+import torchmetrics
+from torch.utils.data import TensorDataset, DataLoader
+from pytorch_lightning.callbacks import TQDMProgressBar
 from extract import *
 from transform import *
 
 # Setup the preprocessing pipeline to get abundances of phyla
 preprocessor.set_params(selectfeatures__abundance = "phylum", keeptoptaxa__n = 150)
+#preprocessor.set_params(selectfeatures__abundance = "phylum", selectfeatures__Zc = "domain", keeptoptaxa__n = 150)
 # Note: the imputer step of the transform yields a NumPy array with 2 dimensions
 X_train = preprocessor.fit_transform(X_train)
 # Transform test data after fitting on the training data
@@ -27,7 +29,7 @@ dataloader_train = DataLoader(dataset_train, batch_size = 100, shuffle = True)
 dataset_test = TensorDataset(torch.tensor(X_test).float(), torch.tensor(y_test).float())
 dataloader_test = DataLoader(dataset_test, batch_size = 100)
 
-class DeepModel(nn.Module):
+class DeepModel(L.LightningModule):
     def __init__(self, num_features):
         super().__init__()
         self.layers = nn.Sequential(
@@ -39,6 +41,7 @@ class DeepModel(nn.Module):
             nn.ReLU(),
             nn.Linear(32, 1),
         )
+        self.learning_rate = 0.01
 
         ## Initialize each layer's weights
         #nn.init.kaiming_uniform_(self.fc1.weight)
@@ -48,60 +51,50 @@ class DeepModel(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
-class LinearModel(nn.Module):
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr = self.learning_rate)
+
+    def training_step(self, batch, batch_idx):
+        inputs, target = batch
+        output = self.forward(inputs)
+        loss = F.mse_loss(output, target)
+        # https://stackoverflow.com/questions/71236391/pytorch-lightning-print-accuracy-and-loss-at-the-end-of-each-epoch
+        self.log("train_loss", loss, prog_bar = True, on_step = False, on_epoch = True)
+        return loss
+
+class LinearModel(L.LightningModule):
     def __init__(self, num_features):
         super().__init__()
         self.layer = nn.Linear(num_features, 1)
+        self.learning_rate = 0.1
 
     def forward(self, x):
         return self.layer(x)
 
+    def configure_optimizers(self):
+        return optim.Adam(self.parameters(), lr = self.learning_rate)
+
+    def training_step(self, batch, batch_idx):
+        inputs, target = batch
+        output = self.forward(inputs)
+        loss = F.mse_loss(output, target)
+        self.log("train_loss", loss, prog_bar = True, on_step = False, on_epoch = True)
+        return loss
+
 # Instantiate the desired model
 num_features = X_train.shape[1]
 model = DeepModel(num_features)
+# Setup the trainer
+# Adjust refresh rate for progress bar:
+# https://lightning.ai/docs/pytorch/stable/common/progress_bar.html
+trainer = L.Trainer(max_epochs = 1000, callbacks = [TQDMProgressBar(refresh_rate = 100)])
 
-# Use higher learning rate for linear model
-if model.__class__.__name__ == "DeepModel":
-    lr = 0.01
-if model.__class__.__name__ == "LinearModel":
-    lr = 0.1
-
-# Define the loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr = lr)
-
-# The training loop
-# Make sure the model is in training mode
-model.train()
-num_epochs = 2000
-for epoch in range(num_epochs):
-    running_loss = 0.0
-    running_size = 0.0
-    for data in dataloader_train:
-        # Set the gradients to zero
-        optimizer.zero_grad()
-        # Get features and target from the dataloader
-        features, target = data
-        # Run a forward pass
-        predictions = model(features)
-        # Compute loss
-        loss = criterion(predictions, target)
-        # Compute new gradients
-        loss.backward()
-        # Update the parameters
-        optimizer.step()
-        # Keep track of the loss weighted by number of samples in each batch
-        running_loss += loss.item() * target.shape[0]
-        running_size += target.shape[0]
-
-    # Calculate overall loss for epoch
-    epoch_loss = running_loss / running_size
-    if epoch % 100 == 0 or epoch == num_epochs - 1:
-        print(f"Epoch: {epoch:03d}, Loss: {epoch_loss:.2f}")
+# Train the model
+trainer.fit(model, train_dataloaders = dataloader_train)
 
 # Model evaluation
 # Set up MAE metric
-mean_absolute_error = MeanAbsoluteError()
+mean_absolute_error = torchmetrics.MeanAbsoluteError()
 # Put model in eval mode
 model.eval()
 # Iterate over test data batches with no gradients
