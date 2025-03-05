@@ -3,9 +3,76 @@
 This repository has files for the study:
 *Machine learning prediction of redox potential from microbial abundances and genomes*.
 
+The name `orpML` comes from the acronyms for oxidation-reduction potential (ORP) and machine learning.
+- The goal of this study is to develop methods for predicting ORP from DNA sequence data for microbial communities.
+- Reliable predictions of ORP would contribute to understanding microbial responses to natural or anthropogenic environmental shifts.
+- This information about environments-microbial coupling could result in better management of microbial communities for agricultural or biotechnological purposes.
+
+The features (X values) in the dataset consist of microbial abundances augmented with genome-derived features:
+- Relative abundances of microbial groups at different taxonomic ranks were inferred from 16S rRNA gene sequences.
+- Carbon oxidation state of proteins at the same taxnomic ranks were computed from reference microbial genomes, weighted by microbial abundances.
+
+The targets (y values) in the dataset are measured ORP values in millivolts (mV) reported in various studies.
+The source of data is the study by [Dick and Meng (2023)](https://doi.org/10.1128/msystems.00014-23).
+
 The usage is briefly described below.
 
-## Get data (optional)
+## Interactive use
+
+This imports the package and sets up the data preprocessor to use abundances of phyla as the features.
+Then we fit a HistGBR (Histogram-Based Gradient Boosting Regressor) model to the data, make predictions, and calculate the mean absolute error using the test set.
+
+```python
+from orpML import *
+from sklearn.metrics import mean_absolute_error
+preprocessor.set_params(selectfeatures__abundance = "phylum")
+histgbr.fit(X_train, y_train)
+y_pred = histgbr.predict(X_test)
+print(mean_absolute_error(y_pred, y_test))
+```
+
+The result shows that the predictions of ORP are accurate to within ca. 75 mV on average.
+
+## Running the scripted workflows
+
+Workflows have been implemented to evaluate the performance of different preprocessing steps and model hyperparameters.
+
+### Run models with scikit-learn
+
+```python
+# Save results of different grid searches
+Step_1_regressor()
+Step_2_reduce_dim()
+Step_3_n_components()
+Step_4_features()
+Step_5_hyper()
+# Save predictions on test set
+Step_6_test()
+```
+
+### Evaluating and plotting results
+
+```python
+from plot import *
+# MAE of Eh7 vs taxonomic rank for different models
+# (baseline, linear regression, random forests, HistGBR)
+# and feature sets (only abundance or abundance+Zc)
+Plot_1_regressor()
+# Same as above, with dimension reduction step added
+Plot_2_reduce_dim()
+```
+
+Run this R script from the root directory of the package:
+
+```R
+source("plot.R")
+# Test score as a function of number of components using HistGBR
+plot_n_components()
+# Scatterplot of predicted vs ground-truth Eh7
+plot_test()
+```
+
+### Get data (optional)
 
 NOTE: The repo contains the combined data file (`Bacteria.csv.xz`) that is used for downstream processing.
 The following steps only need to be run if you want to recreate this file.
@@ -27,44 +94,6 @@ combine_files()
 ```
 
 This combines the previously created .csv files into one file.
-
-## Run models with scikit-learn
-
-Running python in the root directory:
-
-```python
-from load import *
-# Save results of different grid searches
-Step_1_regressor()
-Step_2_reduce_dim()
-Step_3_n_components()
-Step_4_features()
-Step_5_hyper()
-# Save predictions on test set
-Step_6_test()
-```
-
-## Evaluating and plotting results
-
-```python
-from plot import *
-# MAE of Eh7 vs taxonomic rank for different models
-# (baseline, linear regression, random forests, HistGBR)
-# and feature sets (only abundance or abundance+Zc)
-Plot_1_regressor()
-# Same as above, with dimension reduction step added
-Plot_2_reduce_dim()
-```
-
-Running R in the root directory:
-
-```R
-source("plot.R")
-# Test score as a function of number of components using HistGBR
-plot_n_components()
-# Scatterplot of predicted vs ground-truth Eh7
-plot_test()
-```
 
 ## Modular design
 

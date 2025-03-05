@@ -1,6 +1,17 @@
 import ast
 from sklearn.metrics import mean_absolute_error
-from model import *
+from .extract import *
+from .model import *
+
+# Function to perform and save grid searches over multiple parameter grids
+def run_grid_search(estimator, fileprefix, directory, param_grids, cv = 5, verbose = 1):
+    for i in range(len(param_grids)):
+        PrintOnce()
+        print("--- Running GridSearchCV() for", fileprefix, "with param_grid", i+1, "---")
+        grid = GridSearchCV(estimator = estimator, param_grid = param_grids[i], cv = cv, verbose = verbose, scoring = 'neg_mean_absolute_error', n_jobs = 7)
+        grid.fit(X_train, y_train)
+        results = pd.DataFrame(grid.cv_results_)
+        results.to_csv(directory + "/" + fileprefix + "_" + str(i+1) + ".csv", index = False)
 
 def Step_1_regressor():
 
@@ -9,14 +20,14 @@ def Step_1_regressor():
         'keeptoptaxa__n': [150],
         'selectfeatures__abundance': ["phylum", "class", "order", "family", "genus"],
         'selectfeatures__Zc': [None],
-        'reduce_dim': ['passthrough'],
+#        'reduce_dim': ['passthrough'],
     }
     # Setup grid search for two feature sets (abundance + Zc at the same rank)
     param_grid_2 = {
         'keeptoptaxa__n': [150],
         'selectfeatures__abundance': ["phylum", "class", "order", "family", "genus"],
         'selectfeatures__Zc': ["same"],
-        'reduce_dim': ['passthrough'],
+#        'reduce_dim': ['passthrough'],
     }
     param_grids = [param_grid_1, param_grid_2]
 
@@ -142,7 +153,7 @@ def test_it(model, description):
     # Evaluate predictions using mean absolute error of Eh7
     MAE_train = mean_absolute_error(y_train, y_train_pred)
     MAE_test = mean_absolute_error(y_test, y_test_pred)
-    print(f"R2 of {description} model on training set: {MAE_train:.3f}")
-    print(f"R2 of {description} model on test set: {MAE_test:.3f}")
+    print(f"MAE of {description} model on training set: {MAE_train:.3f}")
+    print(f"MAE of {description} model on test set: {MAE_test:.3f}")
     return MAE_train, MAE_test
 
