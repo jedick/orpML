@@ -3,7 +3,6 @@ import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, Normalizer
-from sklearn.decomposition import PCA
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
@@ -109,10 +108,11 @@ def SelectFeatureCols(X, abundance = None, Zc = None):
     Zc_cols = []
     if Zc == 'same':
         Zc = abundance
-    if not abundance == None:
+    # pd.notna() is False for both None and NaN (nan) values
+    if pd.notna(abundance):
         abundance_cols = X.columns[X.columns.str.contains("__abundance")]
         abundance_cols = abundance_cols[abundance_cols.str.contains(abundance + "__")]
-    if not Zc == None:
+    if pd.notna(Zc):
         Zc_cols = X.columns[X.columns.str.contains("__Zc")]
         Zc_cols = Zc_cols[Zc_cols.str.contains(Zc + "__")]
     # Unpack each list and combine them
@@ -176,14 +176,10 @@ class DropNACols(BaseEstimator, TransformerMixin):
     def get_params(self, deep = False):
         return {"threshold": self.threshold}
 
-
-# Using PCA before predictive model:
-# https://stats.stackexchange.com/questions/258938/pca-before-random-forest-regression-provide-better-predictive-scores-for-my-data
-
 # Define the preprocessing pipeline
 preprocessor = Pipeline([
-    # nb. Linear regression error explodes with all 500 taxa
-    ("keeptoptaxa", KeepTopTaxa(500)),
+    # nb. Linear regression error explodes when all taxa are used
+    ("keeptoptaxa", KeepTopTaxa(150)),
     ("selectfeatures", SelectFeatures()),
     ("dropnacols", DropNACols()),
     # Imputer converts DataFrame to NumPy array
@@ -191,6 +187,5 @@ preprocessor = Pipeline([
     # Use L1 norm to make relative abundances in each sample sum to 1
     ("normalizer", Normalizer(norm = "l1")),
     #("scaler", StandardScaler()),
-    #("reduce_dim", PCA(150)),
 ])
 
