@@ -1,9 +1,9 @@
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
-from sklearn.model_selection import GridSearchCV
+from sklearn.neighbors import KNeighborsRegressor
 from .transform import *
 
-# Dummy regressor (baseline) model
+# Dummy regressor model
 dumreg = Pipeline(
     preprocessor.steps + 
     [("regressor", DummyRegressor())]
@@ -28,5 +28,11 @@ histgbr = Pipeline(
     preprocessor.steps + 
     # Use max_leaf_nodes = None to be consistent with RandomForestRegressor()
     [("regressor", HistGradientBoostingRegressor(max_leaf_nodes = None, random_state = 1))]
+)
+
+# Histogram-based gradient boosting regression tree
+knnreg = Pipeline(
+    preprocessor.steps + 
+    [("regressor", KNeighborsRegressor(n_neighbors = 3))]
 )
 

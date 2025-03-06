@@ -21,13 +21,13 @@ The usage is briefly described below.
 ## Interactive use
 
 This imports the package and sets up the data preprocessor to use abundances of phyla as the features.
-By default, only the 150 most abundant taxa at a given rank (in this case, phylum) are used.
+By default, only the 100 most abundant taxa at a given rank (in this case, phylum) are used.
 Then we fit a ranfor (random forests) model to the data, make predictions, and calculate the mean absolute error using the test set.
 
 ```python
 from orpML import *
 from sklearn.metrics import mean_absolute_error
-preprocessor.set_params(selectfeatures__abundance = "phylum")
+preprocessor.set_params(feat__abundance__use__rank = "phylum", feat__Zc__use__rank = None)
 ranfor.fit(X_train, y_train)
 y_pred = ranfor.predict(X_test)
 print(mean_absolute_error(y_pred, y_test))
@@ -55,14 +55,15 @@ search_5_test_predictions()
 
 ### Evaluating and plotting results
 
-This plots the mean absolute error (MAE) for different combinations of regression models (dummy, linear regression, random forests, HistGBR) and features (only abundance, or both abundance and Zc).
-The result shows that HistGBR (histogram-based gradient boosting regressor) outperforms random forests, reducing the error in predicted Eh7 by at least 5 mV.
+This plots the mean absolute error (MAE) for different combinations of regression models (linear regression, K nearest neighbors, random forests, HistGBR) and features (only abundance, or both abundance and Zc).
+The result shows that HistGBR (histogram-based gradient boosting regressor) outperforms random forests, reducing the error in predicted Eh7 by upwards of 5 mV.
+The error is also lower when using abundances of taxonomic classes or orders instead of phylum-level abundances.
 
 ```python
 plot_1_regressor()
 ```
 
-<img src="assets/plot_1_regressor.png" alt="Mean absolute error of Eh7 for different regression models" width="400" />
+<img src="assets/plot_1_regressor.png" alt="Mean absolute error of Eh7 for different regression models" width="600" />
 
 ### Get data (optional)
 
