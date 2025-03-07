@@ -1,7 +1,7 @@
 # orpML
 
 This repository has files for the study:
-*Machine learning prediction of redox potential from microbial abundances and genomes*.
+*Machine learning prediction of redox potential from microbial abundances*.
 
 The name `orpML` comes from the acronyms for oxidation-reduction potential (ORP) and machine learning.
 - The goal is to develop methods for predicting ORP from DNA sequence data for microbial communities.
@@ -14,7 +14,7 @@ The features (X values) in the dataset consist of microbial abundances augmented
 
 The targets (y values) in the dataset are ORP values (aka Eh) corrected to pH 7, which are denoted as Eh7.
 The values are given in units of millivolts (mV) and were derived from Eh-pH measurements reported in various studies.
-The data sources are as described by [Dick and Meng (2023)](https://doi.org/10.1128/msystems.00014-23).
+The data sources are described by [Dick and Meng (2023)](https://doi.org/10.1128/msystems.00014-23).
 
 The usage is briefly described below.
 

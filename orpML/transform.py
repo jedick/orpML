@@ -105,9 +105,11 @@ def ListFeatureCols(X, abundance = None, Zc = None):
             Zc_cols = Zc_cols[Zc_cols.str.contains(Zc + "__")]
     # Unpack each list and combine them
     feature_cols = [*abundance_cols, *Zc_cols]
-    # Print the number of features and the parameters
-    message = str(len(feature_cols)) + " features for abundance = " + str(abundance) + " and Zc = " + str(Zc)
-    PrintOnce(message)
+    if len(feature_cols) > 0:
+        # Print the number of features and the parameters
+        message = str(len(feature_cols)) + " features for abundance = " + str(abundance) + " and Zc = " + str(Zc)
+        PrintOnce(message)
+
     return feature_cols
 
 class UseAbundance(BaseEstimator, TransformerMixin):
