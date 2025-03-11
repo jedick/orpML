@@ -2,26 +2,22 @@
 # Deep learning model for predicting Eh7 from microbial abundances
 # 20250301 jmd
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as L
 import torchmetrics
 from torch.utils.data import TensorDataset, DataLoader, random_split
-from .extract import *
-from .transform import *
-
-import os
 from torch.utils.tensorboard import SummaryWriter
-
-# Log train and val losses to different directories to plot together in TensorBoard
-LOG_DIR = "tb_logs"
-train_writer = SummaryWriter(os.path.join(LOG_DIR, "train"))
-val_writer = SummaryWriter(os.path.join(LOG_DIR, "val"))
 
 class DeepModel(L.LightningModule):
     def __init__(self, num_features):
         super().__init__()
+        # Log train and val losses to different directories to plot together in TensorBoard
+        logdir = "tb_logs"
+        self.train_writer = SummaryWriter(os.path.join(logdir, "train"))
+        self.val_writer = SummaryWriter(os.path.join(logdir, "val"))
 
         ## Simple linear model
         #self.layer = nn.Linear(num_features, 1)
@@ -86,53 +82,78 @@ class DeepModel(L.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
-        train_writer.add_scalar("mae", self.train_mae.compute(), self.current_epoch)
+        self.train_writer.add_scalar("mae", self.train_mae.compute(), self.current_epoch)
         self.train_mae.reset()
 
     def on_validation_epoch_end(self):
-        val_writer.add_scalar("mae", self.val_mae.compute(), self.current_epoch)
+        self.val_writer.add_scalar("mae", self.val_mae.compute(), self.current_epoch)
         self.val_mae.reset()
 
-# Setup the preprocessing pipeline to use abundances of phyla
-preprocessor.set_params(feat__abundance__use__rank="phylum", feat__Zc__use__rank="phylum")
-# Fit on training data and transform test data (the features)
-X_train = preprocessor.fit_transform(X_train)
-X_test = preprocessor.transform(X_test)
-# Convert target values to NumPy array and reshape to have same number of dimensions as features (2D)
-y_train = y_train.to_numpy().reshape(-1, 1)
-y_test = y_test.to_numpy().reshape(-1, 1)
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        out = self(x)
+        loss = F.mse_loss(out, y)
+        self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.test_mae.update(out, y)
 
-# Create the dataset and dataloader for train and test folds
-train_dataset = TensorDataset(torch.tensor(X_train).float(), torch.tensor(y_train).float())
-# Further split training data into train and val datasets
-train_dataset, val_dataset = random_split(train_dataset, [0.8, 0.2])
-train_dataloader = DataLoader(train_dataset, batch_size=100, num_workers=4, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=100, num_workers=4, shuffle=False)
-# Create test dataset
-test_dataset = TensorDataset(torch.tensor(X_test).float(), torch.tensor(y_test).float())
-test_dataloader = DataLoader(test_dataset, batch_size=100, shuffle=False)
+    def on_test_epoch_end(self):
+        test_mae = self.test_mae.compute()
+        self.log("test_mae", test_mae, on_step=False, on_epoch=True, prog_bar=True)
+        self.test_mae.reset()
 
-# Instantiate the model
-num_features = X_train.shape[1]
+class OrpMLDataModule(L.LightningDataModule): 
+    def __init__(self): 
+        super().__init__() 
+        self.num_features = None
+          
+    def prepare_data(self): 
+        pass
+
+    def setup(self, stage=None): 
+        # This reads the data into X_train, X_test, y_train, and y_test
+        from .extract import X_train, X_test, y_train, y_test, metadata_train, metadata_test
+        # This provides the preprocessing pipeline
+        from .transform import preprocessor
+        # Configure the pipeline to use abundances of phyla
+        preprocessor.set_params(feat__abundance__use__rank="phylum", feat__Zc__use__rank="phylum")
+
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit":
+            # Fit and transform the training data (the features)
+            self.X_train = preprocessor.fit_transform(X_train)
+            # Convert target values to NumPy array and reshape to have same number of dimensions as features (2D)
+            self.y_train = y_train.to_numpy().reshape(-1, 1)
+            # Create the dataset for PyTorch
+            self.train_dataset = TensorDataset(torch.tensor(self.X_train).float(), torch.tensor(self.y_train).float())
+            # Further split training data into train and val datasets
+            self.train_dataset, self.val_dataset = random_split(self.train_dataset, [0.8, 0.2])
+
+        # Assign test dataset for use in dataloader
+        if stage == "test":
+            self.X_test = preprocessor.transform(X_test)
+            self.y_test = y_test.to_numpy().reshape(-1, 1)
+            self.test_dataset = TensorDataset(torch.tensor(self.X_test).float(), torch.tensor(self.y_test).float())
+
+    def train_dataloader(self): 
+        return DataLoader(self.train_dataset, batch_size=100, num_workers=4, shuffle=True)
+  
+    def val_dataloader(self): 
+        return DataLoader(self.val_dataset, batch_size=100, num_workers=4)
+  
+    def test_dataloader(self): 
+        return DataLoader(self.test_dataset, batch_size=100, num_workers=4)
+
+# Instantiate the data module
+dm = OrpMLDataModule()
+# Get number of features from data
+dm.prepare_data()
+dm.setup(stage="fit")
+num_features = dm.X_train.shape[1]
+# Instantiate the deep learning model
 model = DeepModel(num_features)
-
-# Setup the trainer
+# Setup the trainer and fit the model to the data
 trainer = L.Trainer(logger=False, enable_checkpointing=False, max_epochs=50)
-
-# Train the model
-trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
-
-# Model evaluation
-# Set up MAE metric
-mean_absolute_error = torchmetrics.MeanAbsoluteError()
-# Put model in eval mode
-model.eval()
-# Iterate over test data batches with no gradients
-with torch.no_grad():
-  for x, y in test_dataloader:
-    y_hat = model(x)
-    # Update MAE metric
-    mean_absolute_error(y_hat, y)
-test_mae = mean_absolute_error.compute()
-print(f"MeanAbsoluteError on test set: {test_mae}")
-
+trainer.fit(model, datamodule=dm)
+# Test the model
+dm.setup(stage="test")
+trainer.test(model, datamodule=dm)
