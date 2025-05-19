@@ -104,7 +104,6 @@ class DeepModel(L.LightningModule):
 class OrpMLDataModule(L.LightningDataModule): 
     def __init__(self): 
         super().__init__() 
-        self.num_features = None
           
     def prepare_data(self): 
         pass

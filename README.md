@@ -63,7 +63,7 @@ The error is also lower when using abundances of taxonomic classes or orders ins
 plot_1_regressor()
 ```
 
-<img src="assets/plot_1_regressor.png" alt="Mean absolute error of Eh7 for different regression models" width="600" />
+<img src="images/plot_1_regressor.png" alt="Mean absolute error of Eh7 for different regression models" width="600" />
 
 ### Get data (optional)
 
